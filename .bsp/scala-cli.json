@@ -1,0 +1,16 @@
+{
+  "name": "scala-cli",
+  "argv": [
+    "/home/fabio/.local/share/coursier/bin/.scala-cli.aux",
+    "bsp",
+    "--json-options",
+    "/home/fabio/workspace/did-comm-action/.scala-build/ide-options-v2.json",
+    "/home/fabio/workspace/did-comm-action"
+  ],
+  "version": "0.1.19",
+  "bspVersion": "2.1.0-M3",
+  "languages": [
+    "scala",
+    "java"
+  ]
+}

@@ -1,0 +1,28 @@
+name: "Hello World"
+description: "Greet someone"
+inputs:
+  message: # id of input
+    description: "Message to send"
+    required: true
+    default: "Hello World"
+# outputs:
+#   random-number:
+#     description: "Random number"
+#     value: ${{ steps.random-number-generator.outputs.random-number }}
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+    - uses: coursier/cache-action@v6
+    - uses: VirtusLab/scala-cli-setup@main
+    - run: |
+        scala-cli run ../src/main/scala/DIDCommAction.scala \
+          --dependency app.fmgp::did::0.1.0-M16 \
+          --dependency app.fmgp::did-method-peer::0.1.0-M16 \
+          -S 3.3.1
+      # -- "test"
+      env:
+        SENDER_KEYS: '[{"kty":"OKP","crv":"X25519","d":"Z6D8LduZgZ6LnrOHPrMTS6uU2u5Btsrk1SGs4fn8M7c","x":"Sr4SkIskjN_VdKTn0zkjYbhGTWArdUNE4j_DmUpnQGw"},{"kty":"OKP","crv":"Ed25519","d":"INXCnxFEl0atLIIQYruHzGd5sUivMRyQOzu87qVerug","x":"MBjnXZxkMcoQVVL21hahWAw43RuAG-i64ipbeKKqwoA"}]'
+        RECIPIENT_DID: "did:peer:2.Ez6LSghwSE437wnDE1pt3X6hVDUQzSjsHzinpX3XFvMjRAm7y.Vz6Mkhh1e5CEYYq6JBUcTZ6Cp2ranCWRrv7Yax3Le4N59R6dd.SeyJ0IjoiZG0iLCJzIjoiaHR0cHM6Ly9hbGljZS5kaWQuZm1ncC5hcHAvIiwiciI6W10sImEiOlsiZGlkY29tbS92MiJdfQ"
+        MSG: "Test From Action"
+      shell: bash
