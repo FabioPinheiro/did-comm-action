@@ -1,14 +1,17 @@
-name: "Hello World"
-description: "Greet someone"
+name: "DID Comm action"
+description: "Send a DID Comm message from github"
 inputs:
-  message: # id of input
+  message:
     description: "Message to send"
     required: true
     default: "Hello World"
-# outputs:
-#   random-number:
-#     description: "Random number"
-#     value: ${{ steps.random-number-generator.outputs.random-number }}
+  recipient:
+    description: "RECIPIENT_DID"
+    required: true
+    default: "did:peer:2.Ez6LSjrRmrSaHcrdThyW5qoWzcDxiJwJsmMdJumfFJb2HDDqu.Vz6MkwQxWcfEHkiyuguxVN44g1AuMQQn94nATHKcMyriee3wZ.SeyJ0IjoiZG0iLCJzIjoiZGlkOnBlZXI6Mi5FejZMU2dod1NFNDM3d25ERTFwdDNYNmhWRFVRelNqc0h6aW5wWDNYRnZNalJBbTd5LlZ6Nk1raGgxZTVDRVlZcTZKQlVjVFo2Q3AycmFuQ1dScnY3WWF4M0xlNE41OVI2ZGQuU2V5SjBJam9pWkcwaUxDSnpJam9pYUhSMGNITTZMeTl6YVhRdGNISnBjMjB0YldWa2FXRjBiM0l1WVhSaGJHRndjbWx6YlM1cGJ5SXNJbklpT2x0ZExDSmhJanBiSW1ScFpHTnZiVzB2ZGpJaVhYMC5TZXlKMElqb2laRzBpTENKeklqb2lkM056T2k4dmMybDBMWEJ5YVhOdExXMWxaR2xoZEc5eUxtRjBZV3hoY0hKcGMyMHVhVzh2ZDNNaUxDSnlJanBiWFN3aVlTSTZXeUprYVdSamIyMXRMM1l5SWwxOSIsInIiOltdLCJhIjpbImRpZGNvbW0vdjIiXX0"
+  encrypted:
+    description: "If true it encrypts the message otherwise it only sign. (The defualt is false to only sign)"
+    required: false
 runs:
   using: "composite"
   steps:
@@ -16,13 +19,15 @@ runs:
     - uses: coursier/cache-action@v6
     - uses: VirtusLab/scala-cli-setup@main
     - run: |
-        scala-cli run ../src/main/scala/DIDCommAction.scala \
+        scala-cli run src/main/scala/DIDCommAction.scala \
           --dependency app.fmgp::did::0.1.0-M16 \
+          --dependency app.fmgp::did-imp::0.1.0-M16 \
+          --dependency app.fmgp::did-framework::0.1.0-M16 \
           --dependency app.fmgp::did-method-peer::0.1.0-M16 \
           -S 3.3.1
       # -- "test"
       env:
         SENDER_KEYS: '[{"kty":"OKP","crv":"X25519","d":"Z6D8LduZgZ6LnrOHPrMTS6uU2u5Btsrk1SGs4fn8M7c","x":"Sr4SkIskjN_VdKTn0zkjYbhGTWArdUNE4j_DmUpnQGw"},{"kty":"OKP","crv":"Ed25519","d":"INXCnxFEl0atLIIQYruHzGd5sUivMRyQOzu87qVerug","x":"MBjnXZxkMcoQVVL21hahWAw43RuAG-i64ipbeKKqwoA"}]'
-        RECIPIENT_DID: "did:peer:2.Ez6LSghwSE437wnDE1pt3X6hVDUQzSjsHzinpX3XFvMjRAm7y.Vz6Mkhh1e5CEYYq6JBUcTZ6Cp2ranCWRrv7Yax3Le4N59R6dd.SeyJ0IjoiZG0iLCJzIjoiaHR0cHM6Ly9hbGljZS5kaWQuZm1ncC5hcHAvIiwiciI6W10sImEiOlsiZGlkY29tbS92MiJdfQ"
-        MSG: "Test From Action"
+        RECIPIENT_DID: "${{ inputs.recipient }}"
+        MSG: "${{ inputs.message }}"
       shell: bash

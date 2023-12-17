@@ -1,0 +1,17 @@
+name: CI
+on: [push]
+jobs:
+  hello_world_job:
+    name: A job to say hello
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest] #, macOS-latest, windows-latest]
+    steps:
+      - id: did-comm-action
+        name: Run the did-comm-action
+        uses: FabioPinheiro/did-comm-action@HEAD
+        with:
+          message: "Run on commit: ${{ github.event.head_commit.message }}"
+          recipient: "did:peer:2.Ez6LSjrRmrSaHcrdThyW5qoWzcDxiJwJsmMdJumfFJb2HDDqu.Vz6MkwQxWcfEHkiyuguxVN44g1AuMQQn94nATHKcMyriee3wZ.SeyJ0IjoiZG0iLCJzIjoiZGlkOnBlZXI6Mi5FejZMU2dod1NFNDM3d25ERTFwdDNYNmhWRFVRelNqc0h6aW5wWDNYRnZNalJBbTd5LlZ6Nk1raGgxZTVDRVlZcTZKQlVjVFo2Q3AycmFuQ1dScnY3WWF4M0xlNE41OVI2ZGQuU2V5SjBJam9pWkcwaUxDSnpJam9pYUhSMGNITTZMeTl6YVhRdGNISnBjMjB0YldWa2FXRjBiM0l1WVhSaGJHRndjbWx6YlM1cGJ5SXNJbklpT2x0ZExDSmhJanBiSW1ScFpHTnZiVzB2ZGpJaVhYMC5TZXlKMElqb2laRzBpTENKeklqb2lkM056T2k4dmMybDBMWEJ5YVhOdExXMWxaR2xoZEc5eUxtRjBZV3hoY0hKcGMyMHVhVzh2ZDNNaUxDSnlJanBiWFN3aVlTSTZXeUprYVdSamIyMXRMM1l5SWwxOSIsInIiOltdLCJhIjpbImRpZGNvbW0vdjIiXX0"

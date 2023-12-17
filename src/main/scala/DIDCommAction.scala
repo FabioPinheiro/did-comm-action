@@ -3,38 +3,36 @@
 
 import zio._
 import zio.json._
+import zio.http._
 
 import fmgp.crypto.*
+import fmgp.crypto.error.*
 import fmgp.did.*
 import fmgp.did.comm.*
 import fmgp.did.method.peer.*
 import fmgp.did.comm.protocol.basicmessage2.BasicMessage
-import fmgp.crypto.error.DIDSubjectNotSupported
+import fmgp.did.framework.*
 
-val alice = DIDPeer2.makeAgent(
-  Seq(
-    OKPPrivateKey( // keyAgreement
-      kty = KTY.OKP,
-      crv = Curve.X25519,
-      d = "Z6D8LduZgZ6LnrOHPrMTS6uU2u5Btsrk1SGs4fn8M7c",
-      x = "Sr4SkIskjN_VdKTn0zkjYbhGTWArdUNE4j_DmUpnQGw",
-      kid = None
-    ),
-    OKPPrivateKey( // keyAuthentication
-      kty = KTY.OKP,
-      crv = Curve.Ed25519,
-      d = "INXCnxFEl0atLIIQYruHzGd5sUivMRyQOzu87qVerug",
-      x = "MBjnXZxkMcoQVVL21hahWAw43RuAG-i64ipbeKKqwoA",
-      kid = None
-    )
-  )
-  // Seq(DIDPeerServiceEncoded("https://alice.did.fmgp.app/"))
-)
-//[{"kty":"OKP","crv":"X25519","d":"Z6D8LduZgZ6LnrOHPrMTS6uU2u5Btsrk1SGs4fn8M7c","x":"Sr4SkIskjN_VdKTn0zkjYbhGTWArdUNE4j_DmUpnQGw"},{"kty":"OKP","crv":"Ed25519","d":"INXCnxFEl0atLIIQYruHzGd5sUivMRyQOzu87qVerug","x":"MBjnXZxkMcoQVVL21hahWAw43RuAG-i64ipbeKKqwoA"}]
-
-/** scala-cli run DIDCommAction.scala --dependency app.fmgp::did::0.1.0-M16 -S 3.3.1
-  */
 object DIDCommAction extends ZIOAppDefault {
+
+  private val transportDispatcherLayer = ZLayer.fromZIO({
+    for {
+      transportFactory <- ZIO.service[TransportFactory]
+      transportDispatcher = new TransportDispatcher {
+        def send(
+            to: comm.TO,
+            msg: comm.SignedMessage | comm.EncryptedMessage,
+            thid: Option[comm.MsgID],
+            pthid: Option[comm.MsgID]
+        ): zio.ZIO[Resolver & Agent & comm.Operations, DidFail, Unit] =
+          super.sendViaDIDCommMessagingService(to, msg).unit
+
+        override def openTransport(uri: String): UIO[TransportDIDComm[Any]] =
+          transportFactory.openTransport(uri)
+      }
+    } yield transportDispatcher
+  }) // .provideLayer(transportFactoryLayer))
+
   override val run = {
     for {
       _ <- Console.printLine(
@@ -53,33 +51,57 @@ object DIDCommAction extends ZIOAppDefault {
             case Left(value)  => Left("Fail to parse SENDER_KEYS")
             case Right(value) => Right(DIDPeer2.makeAgent(value))
       }
-      sender <- ZIO.fromEither(mAgent)
+      senderAgent: Agent <- ZIO.fromEither(mAgent)
 
       mRecipientDID <- System.env("RECIPIENT_DID").map {
         case None        => Left("Missing Env RECIPIENT_DID")
         case Some(value) => DIDSubject.either(value)
       }
-      recipientDID <- ZIO.fromEither(mRecipientDID)
+      recipient <- ZIO.fromEither(mRecipientDID).map(_.asTO)
 
       msgText <- System.env("MSG").map(_.getOrElse("empty"))
       _ <- Console.printLine(msgText)
-      _ <- Console.printLine(alice.id.asDIDSubject)
+      _ <- Console.printLine(senderAgent.id.asDIDSubject)
 
+      encrypted <- System.env("ENCRYPTED").map {
+        case None => false
+        case Some(value) =>
+          value.toBooleanOption match
+            case None        => false
+            case Some(value) => value
+      }
       basicMessage = BasicMessage(
-        from = Some(alice.id),
-        to = Set(recipientDID.asTO),
+        from = Some(senderAgent.id),
+        to = Set(recipient),
         content = msgText
       )
-      msg <- Operations
-        .sign(basicMessage.toPlaintextMessage)
-        .provideSomeLayer(
-          ZLayer.succeed(alice)
-        )
-      // TODO SEND
-      _ <- Console.printLine(msg.toJsonPretty)
+      msg <-
+        if (encrypted) {
+          Operations
+            .sign(basicMessage.toPlaintextMessage)
+            .provideSomeLayer(
+              ZLayer.succeed(senderAgent)
+            )
+        } else {
+          Operations
+            .encrypt(basicMessage.toPlaintextMessage)
+            .provideSomeLayer(
+              ZLayer.succeed(senderAgent)
+            )
+        }
+      transportDispatcher <- ZIO.service[TransportDispatcher]
+      _ <- transportDispatcher
+        .send(recipient, msg, None, None)
+        .provideSomeEnvironment((env: ZEnvironment[Resolver & Operations]) => env ++ ZEnvironment(senderAgent))
+      _ <- Console.printLine(msg.toJson) // msg.toJsonPretty
     } yield ()
   }.provide(
-    Operations.layerDefault ++ DidPeerResolver.layer
+    Scope.default,
+    Client.default,
+    TransportFactoryImp.layer,
+    Operations.layerDefault,
+    DidPeerResolver.layer,
+    transportDispatcherLayer
   )
 
 }
