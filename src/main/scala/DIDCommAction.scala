@@ -98,10 +98,9 @@ object DIDCommAction extends ZIOAppDefault {
   }.provide(
     Scope.default,
     Client.default,
-    TransportFactoryImp.layer,
     Operations.layerDefault,
     DidPeerResolver.layer,
-    transportDispatcherLayer
+    (TransportFactoryImp.layer >>> transportDispatcherLayer)
   )
 
 }
